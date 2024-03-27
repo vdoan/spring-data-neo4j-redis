@@ -3,6 +3,7 @@ package com.tutorial.rediscache.service;
 import com.tutorial.rediscache.dao.entity.contact.Contact;
 import com.tutorial.rediscache.dao.entity.party.*;
 import com.tutorial.rediscache.dao.entity.preferences.PartyPreference;
+import com.tutorial.rediscache.web.form.GenericSearchCriteria;
 import com.tutorial.rediscache.exception.*;
 import com.tutorial.rediscache.repository.*;
 import com.tutorial.rediscache.service.*;
@@ -14,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.MessageSource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
@@ -80,9 +83,45 @@ public class UserServiceImpl implements UserService {
         return user;
     }
 
+    @Override
+    public Page<User> searchUser(GenericSearchCriteria criteria, Pageable pageable) {
+        // ToDo: Search DB or Cache
 
+        Page<User> results = null;
+
+
+        return results;
+    }
+
+    @Override
+    public List<Contact> getUserContacts(Long id){
+        // ToDo: Get from DB OR Cache Contact Table
+        List<Contact> list = null;
+
+        return list;
+    }
+
+    @Override
+    public Contact getContact(Long id, Long contactId){
+        // ToDo: Look up cache first, if not in cache, fetch from DB and store in cache
+        Contact contact = null;
+
+        return contact;
+    }
+
+    @Override
+    public Contact addContact(Long id, Contact form){
+        // ToDo: Add DB & Cache Contact Table
+        Contact contact = null;
+
+        return contact;
+    }
     @Override
     public void updateContact(Long id, Long contactId, Contact contact){
         // ToDo: Update DB & Cache Contact Table
+    }
+    @Override
+    public void removeContact(Long id, Long contactId){
+        // ToDo: Remove DB & Cache Contact Table
     }
 }
