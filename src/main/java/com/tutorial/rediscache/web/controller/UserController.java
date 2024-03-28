@@ -1,35 +1,33 @@
 package com.tutorial.rediscache.web.controller;
 
-import com.tutorial.rediscache.constant.Constants;
-import com.tutorial.rediscache.dao.entity.party.User;
-import com.tutorial.rediscache.exception.*;
-import com.tutorial.rediscache.service.*;
-import com.tutorial.rediscache.dao.entity.contact.Contact;
-import com.tutorial.rediscache.web.RestResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tutorial.rediscache.constant.Constants;
+import com.tutorial.rediscache.dao.entity.contact.Contact;
+import com.tutorial.rediscache.dao.entity.party.User;
+import com.tutorial.rediscache.exception.RecordNotFoundException;
+import com.tutorial.rediscache.service.UserService;
+import com.tutorial.rediscache.web.RestResponse;
 import com.tutorial.rediscache.web.form.GenericSearchCriteria;
 import io.swagger.annotations.Api;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.*;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
-@EnableCaching
 @Api(tags = {"user-controller"})
 public class UserController {
 
