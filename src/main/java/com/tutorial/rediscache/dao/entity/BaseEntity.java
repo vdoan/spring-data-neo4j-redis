@@ -6,6 +6,7 @@ import com.redis.om.spring.annotations.Indexed;
 import com.tutorial.rediscache.constant.Constants;
 import com.tutorial.rediscache.constant.Status;
 import lombok.Data;
+import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -30,11 +31,13 @@ public abstract class BaseEntity {
     private Long createdBy;
 
     @Setter
+    @Getter
     private Long lastModifiedDate;
 
     @LastModifiedBy
     private Long lastModifiedBy;
     @Setter
+    @Getter
     private Status status;
 
 

@@ -1,21 +1,15 @@
 package com.tutorial.rediscache.repository;
 
-import com.tutorial.rediscache.constant.PartyType;
-import com.tutorial.rediscache.dao.entity.party.*;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-
-import org.springframework.data.neo4j.repository.query.Query;
+import com.tutorial.rediscache.dao.entity.party.User;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
+import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.repository.query.QueryByExampleExecutor;
 
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
-public interface UserRepository extends PagingAndSortingRepository<User, Long>, Neo4jRepository<User, Long> {
+public interface UserRepository extends PagingAndSortingRepository<User, Long>, Neo4jRepository<User, Long>, QueryByExampleExecutor<User> {
 
     <T> T findById(Long id, Class<T> type);
     @Query(value="MATCH(p:User {status: 'ACTIVE'}) WHERE ID(p)=$0 " +
@@ -62,6 +56,5 @@ public interface UserRepository extends PagingAndSortingRepository<User, Long>, 
             "partyLink: pl{.*, id:ID(pl), links: collect(link{.*, id:ID(link)})}" +
             "} ")
     Object getUserDetail(Long id);
-
 
 }

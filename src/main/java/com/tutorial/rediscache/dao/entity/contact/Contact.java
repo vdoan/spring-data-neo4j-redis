@@ -1,17 +1,20 @@
 package com.tutorial.rediscache.dao.entity.contact;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.tutorial.rediscache.constant.ContactType;
 import com.tutorial.rediscache.constant.ContactTypeEnum;
 import com.tutorial.rediscache.dao.EntityLabels;
 import com.tutorial.rediscache.dao.entity.BaseEntity;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 import org.springframework.data.neo4j.core.schema.Node;
 
 import java.time.Instant;
 
 @Node(EntityLabels.Contact)
 @Data
+@EqualsAndHashCode(callSuper=false)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Contact extends BaseEntity {
 	private ContactTypeEnum type;
 	private String value;
