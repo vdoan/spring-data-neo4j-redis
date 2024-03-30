@@ -1,5 +1,11 @@
 package com.tutorial.rediscache.service;
 
+import com.querydsl.core.types.Ops;
+import com.querydsl.core.types.Path;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.BooleanOperation;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.SimplePath;
 import com.tutorial.rediscache.config.RedisConfig;
 import com.tutorial.rediscache.dao.entity.contact.Contact;
 import com.tutorial.rediscache.dao.entity.party.User;
@@ -10,14 +16,13 @@ import com.tutorial.rediscache.web.form.GenericSearchCriteria;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.context.MessageSource;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,33 +48,33 @@ public class UserServiceImpl implements UserService {
     public User add(User user) {
         PartyPreference preference = new PartyPreference();
         user.setPreferences(preference);
-        return putUserToCache(userRepository.save(user));
+        return userRepository.save(user);
     }
 
     @Override
-    @CachePut(value = RedisConfig.USER_CACHE_NAME, key="#result.id")
-    public User save(User user){
-        return putUserToCache(userRepository.save(user));
+    @CacheEvict(value = RedisConfig.USER_CACHE_NAME, key = "#result.id")
+    public User save(User user) {
+        return userRepository.save(user);
     }
 
 
     @Override
     @Cacheable(value = RedisConfig.USER_CACHE_NAME, key = "#id", unless = "#result == null")
-    public Optional<User> findById(Long id){
+    public Optional<User> findById(Long id) {
         return userRepository.findById(id);
     }
 
 
     @Override
     @Cacheable(value = RedisConfig.USER_CACHE_NAME, key = "#tagName", unless = "#result == null")
-    public Optional<User> findByTagname(String tagName){
+    public Optional<User> findByTagname(String tagName) {
         Optional<User> oUser = userRepository.findByTagname(tagName);
         return oUser;
     }
 
     @Override
     @CacheEvict(value = RedisConfig.USER_CACHE_NAME, key = "#id", beforeInvocation = true)
-    public User updateUser(Long id, User form){
+    public User updateUser(Long id, User form) {
         User user = userRepository.findById(id).orElseThrow(() -> new RecordNotFoundException("NOT FOUND"));
         user.setFirstName(form.getFirstName());
         user.setMiddleName(form.getMiddleName());
@@ -78,8 +83,7 @@ public class UserServiceImpl implements UserService {
         user.setHeadline(form.getHeadline());
         user.setDob(form.getDob());
 
-        user = save(user);
-        return evictUserFromCache(user);
+        return save(user);
     }
 
     @Override
@@ -90,36 +94,56 @@ public class UserServiceImpl implements UserService {
         searchExample.setLastName(criteria.getLastName());
         searchExample.setTagname(criteria.getTagname());
 
-        Example<User> example = Example.of(searchExample, ExampleMatcher.matching()
-                .withMatcher("firstName", matcher -> matcher.ignoreCase().contains())
-                .withMatcher("lastName", matcher -> matcher.ignoreCase().contains())
+        Path<User> userPath = Expressions.path(User.class, "user");
+        SimplePath<User> firstNamePath = Expressions.path(User.class, userPath, "firstName");
+        SimplePath<User> countryPath = Expressions.path(User.class, userPath, "country");
+        List<BooleanExpression> expressions = new ArrayList<>();
+
+        if (criteria.getFirstName() != null) {
+            expressions.add(Expressions.predicate(Ops.LIKE, firstNamePath, Expressions.asString(criteria.getFirstName())));
+        }
+        if (criteria.getCountry() != null && !criteria.getCountry().isEmpty()) {
+            expressions.add(
+                    generateSearchExpressionFromCollectionParameter(
+                            criteria.getCountry(),
+                            countryPath));
+        }
+
+        Iterable<User> all = userRepository.findAll(
+                Expressions.allOf(expressions.toArray(new BooleanExpression[]{}))
         );
 
-        List<User> searchResult = userRepository.findAll(example);
+        ArrayList<User> users = new ArrayList<>();
+        all.iterator().forEachRemaining(users::add);
+        return new PageImpl<>(users);
+    }
 
-        return new PageImpl<>(searchResult);
+    private static BooleanExpression generateSearchExpressionFromCollectionParameter(List<String> searchParams, SimplePath<User> userPath) {
+        return Expressions.anyOf(searchParams.stream().map(country ->
+                Expressions.predicate(Ops.EQ, userPath, Expressions.asSimple(country))
+        ).toArray(BooleanOperation[]::new));
     }
 
     @Override
-    public List<Contact> getUserContacts(Long id){
-        return findById(id).map(User::getContacts).orElse(null);
+    public List<Contact> getUserContacts(Long userId) {
+        return selfReference.findById(userId).map(User::getContacts).orElse(null);
     }
 
     @Override
-    @Cacheable(value = RedisConfig.CONTACT_CACHE_NAME, key = "#contactId", unless = "#result == null")
-    public Contact getContact(Long id, Long contactId){
-        List<Contact> userContacts = getUserContacts(id);
+    public Contact getContact(Long userId, Long contactId) {
+        List<Contact> userContacts = getUserContacts(userId);
         return userContacts == null
                 ? null
                 : userContacts.stream()
-                        .filter(contact -> contact.getId().equals(contactId))
-                        .findFirst()
-                        .orElse(null);
+                .filter(contact -> contact.getId().equals(contactId))
+                .findFirst()
+                .orElse(null);
     }
 
     @Override
-    public Contact addContact(Long id, Contact contact){
-        User user = selfReference.findById(id).orElseThrow(() -> new RecordNotFoundException("NOT FOUND"));
+    @CacheEvict(value = RedisConfig.USER_CACHE_NAME, key = "#id")
+    public Contact addContact(Long id, Contact contact) {
+        User user = userRepository.findById(id).orElseThrow(() -> new RecordNotFoundException("NOT FOUND"));
 
         if (user.getContacts() == null) {
             user.setContacts(new ArrayList<>());
@@ -127,14 +151,13 @@ public class UserServiceImpl implements UserService {
         user.getContacts().add(contact);
         save(user);
 
-        evictUserFromCache(user);
-        putContactToCache(contact);
-
         return contact;
     }
+
     @Override
-    public void updateContact(Long id, Long contactId, Contact contact){
-        User user = findById(id).orElseThrow(() -> new RecordNotFoundException("NOT FOUND"));
+    @CacheEvict(value = RedisConfig.USER_CACHE_NAME, key = "#id")
+    public void updateContact(Long id, Long contactId, Contact contact) {
+        User user = userRepository.findById(id).orElseThrow(() -> new RecordNotFoundException("NOT FOUND"));
         if (user.getContacts() == null) {
             user.setContacts(new ArrayList<>());
         }
@@ -157,57 +180,10 @@ public class UserServiceImpl implements UserService {
         save(user);
     }
 
-    private User evictUserFromCache(User user) {
-        Cache userCache = cacheManager.getCache(RedisConfig.USER_CACHE_NAME);
-        if (userCache == null) {
-            return user;
-        }
-        userCache.evictIfPresent(user.getId());
-        if (user.getTagname() != null) {
-            userCache.evictIfPresent(user.getTagname());
-        }
-        if (user.getContacts() != null) {
-            user.getContacts().forEach(this::evictContactFromCache);
-        }
-        return user;
-    }
-
-    private void evictContactFromCache(Contact contact) {
-        Cache contactCache = cacheManager.getCache(RedisConfig.CONTACT_CACHE_NAME);
-        if (contactCache == null) {
-            return;
-        }
-        contactCache.evictIfPresent(contact.getId());
-    }
-
-    private void putContactToCache(Contact contact) {
-        Cache contactCache = cacheManager.getCache(RedisConfig.CONTACT_CACHE_NAME);
-        if (contactCache == null) {
-            return;
-        }
-        contactCache.put(contact.getId(), contact);
-    }
-    private User putUserToCache(User user) {
-        Cache userCache = cacheManager.getCache(RedisConfig.USER_CACHE_NAME);
-        if (userCache != null) {
-            userCache.put(user.getId(), user);
-            if (user.getTagname() != null) {
-                userCache.put(user.getTagname(), user);
-            }
-        }
-        if (user.getContacts() != null) {
-            user.getContacts().forEach(this::putContactToCache);
-        }
-        return user;
-    }
-
     @Override
-    @Caching(evict = {
-        @CacheEvict(value = RedisConfig.CONTACT_CACHE_NAME, key = "#contactId", beforeInvocation = true),
-        @CacheEvict(value = RedisConfig.USER_CACHE_NAME, key = "#id", beforeInvocation = true)
-    })
-    public void removeContact(Long id, Long contactId){
-        User user = selfReference.findById(id).orElseThrow(() -> new RecordNotFoundException("NOT FOUND"));
+    @CacheEvict(value = RedisConfig.USER_CACHE_NAME, key = "#id", beforeInvocation = true)
+    public void removeContact(Long id, Long contactId) {
+        User user = userRepository.findById(id).orElseThrow(() -> new RecordNotFoundException("NOT FOUND"));
         if (user.getContacts() == null) {
             user.setContacts(new ArrayList<>());
         }

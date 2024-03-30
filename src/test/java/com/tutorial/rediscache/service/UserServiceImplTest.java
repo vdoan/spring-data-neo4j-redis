@@ -71,7 +71,7 @@ public class UserServiceImplTest {
 
     @Test
     void testSaveUser() {
-        User added = userService.add(getTestUser("John", "Doe", null));
+        User added = userService.add(getTestUser("John", "Doe", null, null));
 
         assertThat(added.getId(), notNullValue());
 
@@ -86,7 +86,7 @@ public class UserServiceImplTest {
     void testGetByTagname() {
         String tagName = "simpleTag";
 
-        User user = getTestUser("first", "second", tagName);
+        User user = getTestUser("first", "second", tagName, null);
         User saved = userService.save(user);
 
         Optional<User> byTagname = userService.findByTagname(tagName);
@@ -96,15 +96,13 @@ public class UserServiceImplTest {
 
     @Test
     void testUpdateUser() {
-        User user = getTestUser("first", "second", "tagName");
+        User user = getTestUser("first", "second", "tagName", null);
         User saved = userService.save(user);
-
-        assertThat("user is cached", cacheManager.getCache(RedisConfig.USER_CACHE_NAME).get(saved.getId()), notNullValue());
 
         // updating user
         String modifiedFirstName = "modifiedFirstName";
         String modifiedLastName = "modifiedLastName";
-        User modifiedUser = getTestUser(modifiedFirstName, modifiedLastName, "tagName");
+        User modifiedUser = getTestUser(modifiedFirstName, modifiedLastName, "tagName", null);
         String newHeadline = "newHeadline";
         modifiedUser.setHeadline(newHeadline);
         String newAbout = "newAbout";
@@ -121,16 +119,16 @@ public class UserServiceImplTest {
         assertThat("about  inserted", updatedUserLoadedFromService.getAbout(), is(newAbout));
         assertThat("headline  inserted", updatedUserLoadedFromService.getHeadline(), is(newHeadline));
         assertThat("DOB  inserted", updatedUserLoadedFromService.getDob(), is(newDob));
-
-
     }
 
     @Test
     void testSearchUserByCriteria() {
-        userService.add(getTestUser("Ada", "Lovelace", null));
-        userService.add(getTestUser("Albert", "Einstein", null));
-        userService.add(getTestUser("Alan", "Guth", null));
-        userService.add(getTestUser("Alan", "Turing", null));
+        userService.add(getTestUser("Albert", "Einstein", null, "USA"));
+        userService.add(getTestUser("Alan", "Guth", null, "USA"));
+        userService.add(getTestUser("Alan", "Turing", null, "Armenia"));
+        userService.add(getTestUser("Edsger", "Dijkstra", null, "Dutch"));
+        userService.add(getTestUser("Linus", "Torvalds", null, "Finland"));
+        userService.add(getTestUser("John", "Neumann", null, "Hungary"));
 
         {
             GenericSearchCriteria criteria = new GenericSearchCriteria();
@@ -143,23 +141,22 @@ public class UserServiceImplTest {
         }
         {
             GenericSearchCriteria criteria = new GenericSearchCriteria();
-            criteria.setFirstName("Alan");
-            criteria.setLastName("ring");
+            criteria.setCountry(List.of("USA", "Finland"));
+            Page<User> users = userService.searchUser(criteria, Pageable.ofSize(10));
+
+            assertThat(users, notNullValue());
+            assertThat(users.getContent(), hasSize(3));
+            assertThat(users.getContent().stream().map(User::getFirstName).toList(), hasItems("Alan", "Albert", "Linus"));
+        }
+        {
+            GenericSearchCriteria criteria = new GenericSearchCriteria();
+            criteria.setFirstName("Alb");
+            criteria.setCountry(List.of("USA", "Finland"));
             Page<User> users = userService.searchUser(criteria, Pageable.ofSize(10));
 
             assertThat(users, notNullValue());
             assertThat(users.getContent(), hasSize(1));
-            assertThat(users.getContent().get(0).getFirstName(), is("Alan"));
-            assertThat(users.getContent().get(0).getLastName(), is("Turing"));
-        }
-        {
-            GenericSearchCriteria criteria = new GenericSearchCriteria();
-            criteria.setLastName("e");
-            Page<User> users = userService.searchUser(criteria, Pageable.ofSize(10));
-
-            assertThat(users, notNullValue());
-            assertThat(users.getContent(), hasSize(2));
-            assertThat(users.getContent().stream().map(User::getLastName).toList(), hasItems("Lovelace", "Einstein"));
+            assertThat(users.getContent().stream().map(User::getFirstName).toList(), hasItems(  "Albert"));
         }
     }
 
@@ -169,11 +166,10 @@ public class UserServiceImplTest {
         User user = getTestUserWithContacts();
         user = userService.save(user);
 
-        user.getContacts().forEach(contact -> {
-            assertThat(
-                    "contacts are present in the Contact cache once user is saved",
-                    cacheManager.getCache(RedisConfig.CONTACT_CACHE_NAME).get(contact.getId()), notNullValue());
-        });
+        Optional<User> byId = userService.findById(user.getId());
+
+        assertThat(byId.isPresent(), is(true));
+        assertThat(byId.get().getContacts(), hasSize(4));
     }
 
     @Test
@@ -229,13 +225,6 @@ public class UserServiceImplTest {
         assertThat(retrievedContact.getExtension(), is(42));
         assertThat(retrievedContact.isAllowSolicitation(), is(true));
 
-        Contact fromCache = (Contact) cacheManager.getCache(RedisConfig.CONTACT_CACHE_NAME).get(contactIdToUpdate).get();
-
-        assertThat(fromCache.getType(), is(ContactTypeEnum.POSTAL_ADDRESS));
-        assertThat(fromCache.getValue(), is("newValue"));
-        assertThat(fromCache.getNote(), is("newNote"));
-        assertThat(fromCache.getExtension(), is(42));
-        assertThat(fromCache.isAllowSolicitation(), is(true));
     }
 
     @Test
@@ -250,20 +239,20 @@ public class UserServiceImplTest {
         Contact afterDeletion = userService.getContact(user.getId(), contactIdToRemove);
 
         assertThat(afterDeletion, nullValue());
-        assertThat("contact is removed from cache", cacheManager.getCache(RedisConfig.CONTACT_CACHE_NAME).get(contactIdToRemove), nullValue());
     }
 
-    private User getTestUser(String firstName, String lastName, String tagName) {
+    private User getTestUser(String firstName, String lastName, String tagName, String country) {
         User user = new User();
         user.setFirstName(firstName);
         user.setLastName(lastName);
         user.setTagname(tagName);
+        user.setCountry(country);
         return user;
     }
 
     @NotNull
     private User getTestUserWithContacts() {
-        User user = getTestUser("first", "second", "tagName");
+        User user = getTestUser("first", "second", "tagName", null);
         user.setContacts(List.of(
                 Contact.create(ContactTypeEnum.EMAIL_ADDRESS, "first@second.com", true, "note"),
                 Contact.create(ContactTypeEnum.TELECOM_NUMBER, "911", false, "note"),

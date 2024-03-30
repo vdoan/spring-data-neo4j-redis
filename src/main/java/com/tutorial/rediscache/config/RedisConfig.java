@@ -26,7 +26,6 @@ import java.time.Duration;
 public class RedisConfig {
 
   public static final String USER_CACHE_NAME = "user";
-  public static final String CONTACT_CACHE_NAME = "contact";
 
   @Value("${spring.data.redis.host}")
   private String redisHost;

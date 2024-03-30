@@ -3,13 +3,14 @@ package com.tutorial.rediscache.repository;
 import com.tutorial.rediscache.dao.entity.party.User;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
+import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.QueryByExampleExecutor;
 
 import java.util.HashMap;
 import java.util.Optional;
 
-public interface UserRepository extends PagingAndSortingRepository<User, Long>, Neo4jRepository<User, Long>, QueryByExampleExecutor<User> {
+public interface UserRepository extends PagingAndSortingRepository<User, Long>, Neo4jRepository<User, Long>, QueryByExampleExecutor<User>, QuerydslPredicateExecutor<User> {
 
     <T> T findById(Long id, Class<T> type);
     @Query(value="MATCH(p:User {status: 'ACTIVE'}) WHERE ID(p)=$0 " +

@@ -1,16 +1,16 @@
 package com.tutorial.rediscache.dao.entity.party;
 
 
-import com.maxmind.geoip2.record.Postal;
-import com.tutorial.rediscache.constant.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.tutorial.rediscache.constant.PartyType;
 import com.tutorial.rediscache.dao.EntityLabels;
 import com.tutorial.rediscache.dao.entity.BaseEntity;
 import com.tutorial.rediscache.dao.entity.contact.PostalAddress;
 import com.tutorial.rediscache.dao.entity.preferences.PartyPreference;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
-import org.springframework.data.neo4j.core.schema.Relationship;
 import org.springframework.data.annotation.Transient;
+import org.springframework.data.neo4j.core.schema.Relationship;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +23,8 @@ public abstract class Party extends BaseEntity {
     private String headline = "";
     private String about = "";
     private String preferredLocale;
+    private String country;
+
     @Transient
     private PostalAddress primaryAddress;
 
