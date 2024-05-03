@@ -19,9 +19,9 @@ import java.util.List;
 @EqualsAndHashCode(callSuper=false)
 public class User extends Party {
 
-	private String firstName="";
+	private String firstName="";  // sort 1
 	private String middleName="";
-	private String lastName="";
+	private String lastName=""; // sort 2
 	private String dob;
 
 	@Relationship(type = EntityLabels.Contact, direction = Relationship.Direction.OUTGOING)

@@ -24,6 +24,9 @@ import java.time.Duration;
 @EnableRedisRepositories
 @Data
 public class RedisConfig {
+
+  public static final String USER_CACHE_NAME = "user";
+
   @Value("${spring.data.redis.host}")
   private String redisHost;
 
@@ -48,7 +51,8 @@ public class RedisConfig {
 
   @Bean
   public RedisCacheManager cacheManager() {
-    RedisCacheConfiguration cacheConfig = myDefaultCacheConfig(Duration.ofMinutes(10)).disableCachingNullValues();
+    RedisCacheConfiguration cacheConfig = myDefaultCacheConfig(Duration.ofDays(30))
+            .disableCachingNullValues();
 
     return RedisCacheManager.builder(redisConnectionFactory())
         .cacheDefaults(cacheConfig)

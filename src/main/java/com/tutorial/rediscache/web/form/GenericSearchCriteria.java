@@ -14,7 +14,7 @@ public class GenericSearchCriteria implements Serializable {
     private String lastName;
     private String tagname;
     private List<Long> ids;
-    private List<String> country;
+    private List<String> country; // test this one
     private List<String> state;
     private List<String> city;
     private List<String> size;

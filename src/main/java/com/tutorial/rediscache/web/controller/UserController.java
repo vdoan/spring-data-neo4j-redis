@@ -9,7 +9,6 @@ import com.tutorial.rediscache.service.UserService;
 import com.tutorial.rediscache.web.RestResponse;
 import com.tutorial.rediscache.web.form.GenericSearchCriteria;
 import io.swagger.annotations.Api;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -33,11 +32,7 @@ public class UserController {
 
     public static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
-    private ObjectMapper mapper = new ObjectMapper();
-
     private final MessageSource messageSource;
-
-    private HttpServletRequest request;
 
     private final UserService userService;
 
